@@ -189,7 +189,7 @@ class _NotesPageState extends ConsumerState<NotesPage>
               obscureText: true,
               decoration: InputDecoration(
                 labelText: 'Password',
-                hintText: 'Enter decryption key',
+                hintText: 'Enter your password',
                 prefixIcon: const Icon(Icons.key_rounded),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(16),
@@ -239,95 +239,92 @@ class _NotesPageState extends ConsumerState<NotesPage>
             right: 24,
             top: 24,
           ),
-          child: SafeArea(
-            top: false,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'New Text',
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'New Text',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
                     ),
-                    IconButton(
-                      onPressed: () => Navigator.pop(context),
-                      icon: const Icon(Icons.close),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: contentController,
-                  decoration: InputDecoration(
-                    hintText: 'Write your secret here...',
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(16),
-                      borderSide: BorderSide.none,
-                    ),
-                    filled: true,
-                    fillColor: Theme.of(
-                      context,
-                    ).colorScheme.surfaceContainerHighest,
                   ),
-                  maxLines: 8,
-                  autofocus: true,
-                  enableSuggestions: false,
-                  autocorrect: false,
+                  IconButton(
+                    onPressed: () => Navigator.pop(context),
+                    icon: const Icon(Icons.close),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: contentController,
+                decoration: InputDecoration(
+                  hintText: 'Write your secret here...',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: BorderSide.none,
+                  ),
+                  filled: true,
+                  fillColor: Theme.of(
+                    context,
+                  ).colorScheme.surfaceContainerHighest,
                 ),
-                const SizedBox(height: 24),
-                FilledButton(
-                  onPressed: isSaving
-                      ? null
-                      : () async {
-                          if (contentController.text.isNotEmpty) {
+                maxLines: 8,
+                autofocus: true,
+                enableSuggestions: false,
+                autocorrect: false,
+              ),
+              const SizedBox(height: 24),
+              FilledButton(
+                onPressed: isSaving
+                    ? null
+                    : () async {
+                        if (contentController.text.isNotEmpty) {
+                          setModalState(() {
+                            isSaving = true;
+                          });
+                          try {
+                            final repo = ref.read(notesRepositoryProvider);
+                            await repo.addNote(
+                              contentController.text,
+                              ref.read(passwordProvider),
+                            );
+                            ref.invalidate(decryptedNotesProvider);
+                            if (context.mounted) Navigator.pop(context);
+                          } catch (e) {
                             setModalState(() {
-                              isSaving = true;
+                              isSaving = false;
                             });
-                            try {
-                              final repo = ref.read(notesRepositoryProvider);
-                              await repo.addNote(
-                                contentController.text,
-                                ref.read(passwordProvider),
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text('Error saving: $e')),
                               );
-                              ref.invalidate(decryptedNotesProvider);
-                              if (context.mounted) Navigator.pop(context);
-                            } catch (e) {
-                              setModalState(() {
-                                isSaving = false;
-                              });
-                              if (context.mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(content: Text('Error saving: $e')),
-                                );
-                              }
                             }
                           }
-                        },
-                  style: FilledButton.styleFrom(
-                    minimumSize: const Size(double.infinity, 56),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
+                        }
+                      },
+                style: FilledButton.styleFrom(
+                  minimumSize: const Size(double.infinity, 56),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
                   ),
-                  child: isSaving
-                      ? const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white,
-                          ),
-                        )
-                      : const Text('Encrypt & Save'),
                 ),
-                const SizedBox(height: 24),
-              ],
-            ),
+                child: isSaving
+                    ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Text('Encrypt & Save'),
+              ),
+              const SizedBox(height: 24),
+            ],
           ),
         ),
       ),
@@ -469,9 +466,9 @@ class DecryptedTextsList extends ConsumerWidget {
                   children: [
                     Text(
                       'Detail',
-                      style: Theme.of(
-                        context,
-                      ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                     Row(
                       children: [
@@ -488,7 +485,10 @@ class DecryptedTextsList extends ConsumerWidget {
                             Navigator.pop(context);
                             _confirmDelete(context, ref, note);
                           },
-                          icon: const Icon(Icons.delete_outline, color: Colors.red),
+                          icon: const Icon(
+                            Icons.delete_outline,
+                            color: Colors.red,
+                          ),
                           tooltip: 'Delete text',
                         ),
                         IconButton(
