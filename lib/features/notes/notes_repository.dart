@@ -76,4 +76,8 @@ class NotesRepository {
 
     return decryptedNotes;
   }
+
+  Future<void> deleteNote(int id) async {
+    await _dbService.deleteNote(id);
+  }
 }

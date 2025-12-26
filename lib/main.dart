@@ -28,7 +28,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Secure Notes',
+      title: 'Local Text',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(
@@ -125,7 +125,7 @@ class _NotesPageState extends ConsumerState<NotesPage>
     return Scaffold(
       appBar: AppBar(
         title: const Text(
-          'Secure Notes',
+          'Local Text',
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
         centerTitle: true,
@@ -139,12 +139,12 @@ class _NotesPageState extends ConsumerState<NotesPage>
         ],
       ),
       body: _isUnlocked
-          ? DecryptedNotesList(onCopy: _copyToClipboard)
+          ? DecryptedTextsList(onCopy: _copyToClipboard)
           : _buildUnlockScreen(),
       floatingActionButton: _isUnlocked
           ? FloatingActionButton.extended(
-              onPressed: () => _showAddNoteDialog(context),
-              label: const Text('New Note'),
+              onPressed: () => _showAddTextDialog(context),
+              label: const Text('New Text'),
               icon: const Icon(Icons.add),
             )
           : null,
@@ -172,14 +172,14 @@ class _NotesPageState extends ConsumerState<NotesPage>
             ),
             const SizedBox(height: 32),
             Text(
-              'Private Vault',
+              'Your text is yours',
               style: Theme.of(
                 context,
               ).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
             const Text(
-              'Enter your password to access your notes',
+              'Enter your password to access your texts',
               textAlign: TextAlign.center,
               style: TextStyle(color: Colors.grey),
             ),
@@ -211,16 +211,7 @@ class _NotesPageState extends ConsumerState<NotesPage>
                 ),
               ),
               icon: const Icon(Icons.login_rounded),
-              label: const Text('Unlock Vault', style: TextStyle(fontSize: 16)),
-            ),
-            const SizedBox(height: 16),
-            const Text(
-              'Note: Different passwords reveal different notes.',
-              style: TextStyle(
-                fontSize: 12,
-                color: Colors.grey,
-                fontStyle: FontStyle.italic,
-              ),
+              label: const Text('Unlock', style: TextStyle(fontSize: 16)),
             ),
           ],
         ),
@@ -228,94 +219,125 @@ class _NotesPageState extends ConsumerState<NotesPage>
     );
   }
 
-  void _showAddNoteDialog(BuildContext context) {
+  void _showAddTextDialog(BuildContext context) {
     final contentController = TextEditingController();
+    bool isSaving = false;
 
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => Container(
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surface,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-        ),
-        padding: EdgeInsets.only(
-          bottom: MediaQuery.of(context).viewInsets.bottom,
-          left: 24,
-          right: 24,
-          top: 24,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setModalState) => Container(
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surface,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+          ),
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(context).viewInsets.bottom,
+            left: 24,
+            right: 24,
+            top: 24,
+          ),
+          child: SafeArea(
+            top: false,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text(
-                  'New Secure Note',
-                  style: Theme.of(
-                    context,
-                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'New Text',
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: () => Navigator.pop(context),
+                      icon: const Icon(Icons.close),
+                    ),
+                  ],
                 ),
-                IconButton(
-                  onPressed: () => Navigator.pop(context),
-                  icon: const Icon(Icons.close),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: contentController,
+                  decoration: InputDecoration(
+                    hintText: 'Write your secret here...',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: BorderSide.none,
+                    ),
+                    filled: true,
+                    fillColor: Theme.of(
+                      context,
+                    ).colorScheme.surfaceContainerHighest,
+                  ),
+                  maxLines: 8,
+                  autofocus: true,
+                  enableSuggestions: false,
+                  autocorrect: false,
                 ),
+                const SizedBox(height: 24),
+                FilledButton(
+                  onPressed: isSaving
+                      ? null
+                      : () async {
+                          if (contentController.text.isNotEmpty) {
+                            setModalState(() {
+                              isSaving = true;
+                            });
+                            try {
+                              final repo = ref.read(notesRepositoryProvider);
+                              await repo.addNote(
+                                contentController.text,
+                                ref.read(passwordProvider),
+                              );
+                              ref.invalidate(decryptedNotesProvider);
+                              if (context.mounted) Navigator.pop(context);
+                            } catch (e) {
+                              setModalState(() {
+                                isSaving = false;
+                              });
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text('Error saving: $e')),
+                                );
+                              }
+                            }
+                          }
+                        },
+                  style: FilledButton.styleFrom(
+                    minimumSize: const Size(double.infinity, 56),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
+                  child: isSaving
+                      ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Text('Encrypt & Save'),
+                ),
+                const SizedBox(height: 24),
               ],
             ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: contentController,
-              decoration: InputDecoration(
-                hintText: 'Write your secret here...',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  borderSide: BorderSide.none,
-                ),
-                filled: true,
-                fillColor: Theme.of(
-                  context,
-                ).colorScheme.surfaceContainerHighest,
-              ),
-              maxLines: 8,
-              autofocus: true,
-              enableSuggestions: false,
-              autocorrect: false,
-            ),
-            const SizedBox(height: 24),
-            FilledButton(
-              onPressed: () async {
-                if (contentController.text.isNotEmpty) {
-                  final repo = ref.read(notesRepositoryProvider);
-                  await repo.addNote(
-                    contentController.text,
-                    ref.read(passwordProvider),
-                  );
-                  ref.invalidate(decryptedNotesProvider);
-                  if (context.mounted) Navigator.pop(context);
-                }
-              },
-              style: FilledButton.styleFrom(
-                minimumSize: const Size(double.infinity, 56),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-              ),
-              child: const Text('Encrypt & Save'),
-            ),
-            const SizedBox(height: 24),
-          ],
+          ),
         ),
       ),
     );
   }
 }
 
-class DecryptedNotesList extends ConsumerWidget {
+class DecryptedTextsList extends ConsumerWidget {
   final Function(String) onCopy;
-  const DecryptedNotesList({super.key, required this.onCopy});
+  const DecryptedTextsList({super.key, required this.onCopy});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -329,13 +351,13 @@ class DecryptedNotesList extends ConsumerWidget {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Icon(
-                  Icons.note_alt_outlined,
+                  Icons.text_fields_rounded,
                   size: 64,
                   color: Colors.grey.withAlpha(128),
                 ),
                 const SizedBox(height: 16),
                 const Text(
-                  'No notes found for this password',
+                  'No texts found for this password',
                   style: TextStyle(color: Colors.grey, fontSize: 16),
                 ),
               ],
@@ -374,7 +396,12 @@ class DecryptedNotesList extends ConsumerWidget {
                     style: TextStyle(fontSize: 11, color: Colors.grey.shade500),
                   ),
                 ),
-                onTap: () => _showNoteDetail(context, note),
+                trailing: IconButton(
+                  icon: const Icon(Icons.copy_rounded, size: 20),
+                  onPressed: () => onCopy(note.content),
+                  tooltip: 'Copy to clipboard',
+                ),
+                onTap: () => _showTextDetail(context, ref, note),
               ),
             );
           },
@@ -385,63 +412,121 @@ class DecryptedNotesList extends ConsumerWidget {
     );
   }
 
-  void _showNoteDetail(BuildContext context, DecryptedNote note) {
+  void _confirmDelete(BuildContext context, WidgetRef ref, DecryptedNote note) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Text'),
+        content: const Text('Are you sure you want to delete?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () async {
+              final repo = ref.read(notesRepositoryProvider);
+              await repo.deleteNote(note.id);
+              ref.invalidate(decryptedNotesProvider);
+              if (context.mounted) {
+                Navigator.pop(context); // Close dialog
+              }
+            },
+            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showTextDetail(
+    BuildContext context,
+    WidgetRef ref,
+    DecryptedNote note,
+  ) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => Container(
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surface,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+      builder: (context) => ConstrainedBox(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(context).size.height * 0.85,
         ),
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        child: Container(
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surface,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+          ),
+          padding: const EdgeInsets.all(24.0),
+          child: SafeArea(
+            top: false,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'Note Detail',
-                  style: Theme.of(
-                    context,
-                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
-                ),
                 Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    IconButton(
-                      icon: const Icon(Icons.copy_rounded),
-                      onPressed: () {
-                        onCopy(note.content);
-                        Navigator.pop(context);
-                      },
-                      tooltip: 'Copy Content',
+                    Text(
+                      'Detail',
+                      style: Theme.of(
+                        context,
+                      ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
                     ),
-                    IconButton(
-                      onPressed: () => Navigator.pop(context),
-                      icon: const Icon(Icons.close),
+                    Row(
+                      children: [
+                        IconButton(
+                          onPressed: () {
+                            onCopy(note.content);
+                            Navigator.pop(context);
+                          },
+                          icon: const Icon(Icons.copy),
+                          tooltip: 'Copy to clipboard',
+                        ),
+                        IconButton(
+                          onPressed: () {
+                            Navigator.pop(context);
+                            _confirmDelete(context, ref, note);
+                          },
+                          icon: const Icon(Icons.delete_outline, color: Colors.red),
+                          tooltip: 'Delete text',
+                        ),
+                        IconButton(
+                          onPressed: () => Navigator.pop(context),
+                          icon: const Icon(Icons.close),
+                        ),
+                      ],
                     ),
                   ],
                 ),
+                const SizedBox(height: 16),
+                Flexible(
+                  child: SingleChildScrollView(
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.surfaceContainerHighest,
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: SelectableText(
+                        note.content,
+                        style: const TextStyle(fontSize: 16, height: 1.5),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Created on ${note.createdAt.toString()}',
+                  style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                ),
+                const SizedBox(height: 8),
               ],
             ),
-            const SizedBox(height: 16),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: SelectableText(
-                note.content,
-                style: const TextStyle(fontSize: 16, height: 1.5),
-              ),
-            ),
-            const SizedBox(height: 40),
-          ],
+          ),
         ),
       ),
     );

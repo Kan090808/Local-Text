@@ -1,6 +1,7 @@
-# Minimalist Secure Notes App (Flutter) Specification
+# Local Text (Flutter) Specification
 
 ## 1. Project Base Specs
+- Name: Local Text
 - Framework: Flutter (Latest Stable)
 - Platforms: Android, iOS
 - Storage: 100% Local-Only, no cloud sync
@@ -13,7 +14,7 @@
     - Parameters: 64MB Memory, 3 Iterations, 4 Parallelism
     - Purpose: Prevent GPU/specialized hardware brute-force
 - Symmetric Encryption: AES-256-GCM
-    - Purpose: Encrypt note content and all metadata
+    - Purpose: Encrypt text content and all metadata
     - Features: Quantum-Resistant (AES-256) and data integrity verification
 - Database: SQLCipher (sqflite_sqlcipher)
     - Purpose: Full binary encryption of the local database file
@@ -24,8 +25,8 @@
 - Interaction:
     1. User enters password
     2. App attempts to decrypt GCM Tags of all database entries
-    3. Only successfully decrypted notes are shown; others remain invisible
-    4. Different notes can be encrypted with different passwords, existing independently
+    3. Only successfully decrypted texts are shown; others remain invisible
+    4. Different texts can be encrypted with different passwords, existing independently
 
 ## 4. Extreme Privacy & Security Rules
 - Anti-Screenshot: Android FLAG_SECURE enabled, iOS screen recording detection/blur
@@ -33,7 +34,7 @@
 - Memory Safety: Erase plaintext strings from RAM immediately when app goes to background or page is closed
 - System Decoupling: Disable iOS Spotlight and Android Global Search indexing
 - Input Security: Disable system keyboard auto-prediction and cloud suggestions
-- UI/UX: Modern, minimalist Material 3 design; content-only notes (no titles)
+- UI/UX: Modern, minimalist Material 3 design; content-only texts (no titles); support for text deletion and debounced save actions.
 
 ## 5. Recommended Libraries
 - Encryption: cryptography
